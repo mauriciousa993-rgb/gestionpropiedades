@@ -4,6 +4,8 @@ import type {
   Property,
   Room,
   Tenant,
+  UtilityBill,
+  UtilityShare,
 } from '../lib/types'
 
 /* =========================================================
@@ -172,4 +174,82 @@ export async function updatePayment(id: string, values: Partial<Payment>): Promi
 export async function deletePayment(id: string): Promise<void> {
   const { error } = await supabase.from('payments').delete().eq('id', id)
   if (error) throw error
+}
+
+/* =========================================================
+   SERVICIOS (agua, luz…) con reparto entre inquilinos
+   ========================================================= */
+export async function listUtilityBills(): Promise<UtilityBill[]> {
+  const { data, error } = await supabase
+    .from('utility_bills')
+    .select('*')
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data
+}
+
+export async function listUtilityShares(): Promise<UtilityShare[]> {
+  const { data, error } = await supabase.from('utility_shares').select('*')
+  if (error) throw error
+  return data
+}
+
+export async function createUtilityBill(
+  values: Partial<UtilityBill> & { property_id: string },
+): Promise<UtilityBill> {
+  const { data, error } = await supabase
+    .from('utility_bills')
+    .insert(values)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function addUtilityShares(
+  shares: Partial<UtilityShare>[],
+): Promise<void> {
+  if (shares.length === 0) return
+  const { error } = await supabase.from('utility_shares').insert(shares)
+  if (error) throw error
+}
+
+export async function updateUtilityShare(
+  id: string,
+  values: Partial<UtilityShare>,
+): Promise<UtilityShare> {
+  const { data, error } = await supabase
+    .from('utility_shares')
+    .update(values)
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function deleteUtilityBill(id: string): Promise<void> {
+  const { error } = await supabase.from('utility_bills').delete().eq('id', id)
+  if (error) throw error
+}
+
+/* ---------- Almacenamiento de fotos de recibos (bucket privado) ---------- */
+export async function uploadReceipt(file: File, userId: string): Promise<string> {
+  const ext = file.name.includes('.') ? file.name.split('.').pop() : 'jpg'
+  const path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+  const { error } = await supabase.storage.from('recibos').upload(path, file, {
+    cacheControl: '3600',
+    upsert: false,
+  })
+  if (error) throw error
+  return path
+}
+
+// Genera una URL temporal (1 hora) para ver una foto privada de un recibo.
+export async function receiptSignedUrl(path: string): Promise<string | null> {
+  const { data, error } = await supabase.storage
+    .from('recibos')
+    .createSignedUrl(path, 60 * 60)
+  if (error) return null
+  return data.signedUrl
 }

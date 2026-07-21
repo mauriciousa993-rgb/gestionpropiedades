@@ -7,6 +7,7 @@ const nav = [
   { to: '/propiedades', label: 'Propiedades', icon: '🏠' },
   { to: '/inquilinos', label: 'Inquilinos', icon: '👤' },
   { to: '/pagos', label: 'Pagos', icon: '💶' },
+  { to: '/servicios', label: 'Servicios', icon: '🧾' },
 ]
 
 export default function Layout() {

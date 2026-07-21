@@ -59,6 +59,31 @@ export interface Payment {
   created_at: string
 }
 
+export type UtilityKind = 'agua' | 'luz' | 'gas' | 'internet' | 'comunidad' | 'otro'
+
+export interface UtilityBill {
+  id: string
+  owner_id: string
+  property_id: string
+  kind: UtilityKind
+  period: string | null
+  total_amount: number
+  receipt_url: string | null
+  notes: string | null
+  created_at: string
+}
+
+export interface UtilityShare {
+  id: string
+  owner_id: string
+  bill_id: string
+  tenant_id: string | null
+  amount: number
+  paid: boolean
+  paid_date: string | null
+  created_at: string
+}
+
 // Tipos para inserción (los campos con default en la BD son opcionales).
 export type PropertyInsert = Omit<Property, 'id' | 'owner_id' | 'created_at'>
 export type RoomInsert = Omit<Room, 'id' | 'owner_id' | 'created_at'>
