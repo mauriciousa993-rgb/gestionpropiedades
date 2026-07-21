@@ -9,6 +9,7 @@ import PropertyDetail from './pages/PropertyDetail'
 import Tenants from './pages/Tenants'
 import Payments from './pages/Payments'
 import Services from './pages/Services'
+import Expenses from './pages/Expenses'
 
 export default function App() {
   const { session, loading } = useAuth()
@@ -39,6 +40,7 @@ export default function App() {
         <Route path="/inquilinos" element={<Tenants />} />
         <Route path="/pagos" element={<Payments />} />
         <Route path="/servicios" element={<Services />} />
+        <Route path="/gastos" element={<Expenses />} />
       </Route>
       <Route path="/login" element={<Navigate to="/" replace />} />
       <Route path="*" element={<Navigate to="/" replace />} />

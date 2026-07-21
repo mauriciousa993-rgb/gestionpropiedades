@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
 import type {
+  Expense,
   Payment,
   Property,
   Room,
@@ -252,4 +253,27 @@ export async function receiptSignedUrl(path: string): Promise<string | null> {
     .createSignedUrl(path, 60 * 60)
   if (error) return null
   return data.signedUrl
+}
+
+/* =========================================================
+   GASTOS por propiedad
+   ========================================================= */
+export async function listExpenses(): Promise<Expense[]> {
+  const { data, error } = await supabase
+    .from('expenses')
+    .select('*')
+    .order('expense_date', { ascending: false, nullsFirst: false })
+  if (error) throw error
+  return data
+}
+
+export async function createExpense(values: Partial<Expense>): Promise<Expense> {
+  const { data, error } = await supabase.from('expenses').insert(values).select().single()
+  if (error) throw error
+  return data
+}
+
+export async function deleteExpense(id: string): Promise<void> {
+  const { error } = await supabase.from('expenses').delete().eq('id', id)
+  if (error) throw error
 }

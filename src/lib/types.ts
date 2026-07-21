@@ -84,6 +84,29 @@ export interface UtilityShare {
   created_at: string
 }
 
+export type ExpenseCategory =
+  | 'reparacion'
+  | 'suministros'
+  | 'impuestos'
+  | 'seguro'
+  | 'comunidad'
+  | 'limpieza'
+  | 'hipoteca'
+  | 'otro'
+
+export interface Expense {
+  id: string
+  owner_id: string
+  property_id: string | null
+  category: ExpenseCategory
+  period: string | null
+  expense_date: string | null
+  amount: number
+  description: string | null
+  receipt_url: string | null
+  created_at: string
+}
+
 // Tipos para inserción (los campos con default en la BD son opcionales).
 export type PropertyInsert = Omit<Property, 'id' | 'owner_id' | 'created_at'>
 export type RoomInsert = Omit<Room, 'id' | 'owner_id' | 'created_at'>

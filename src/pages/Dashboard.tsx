@@ -1,30 +1,32 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Badge, Card, EmptyState, Spinner } from '../components/ui'
-import { listPayments, listProperties, listTenants } from '../data/api'
+import { listExpenses, listPayments, listProperties, listTenants } from '../data/api'
 import { currentPeriod, formatDate, formatMoney, formatPeriod } from '../lib/format'
-import type { Payment, Property, Tenant } from '../lib/types'
+import type { Expense, Payment, Property, Tenant } from '../lib/types'
 
 interface Stat {
   label: string
   value: string
   sub?: string
-  tone?: 'brand' | 'green' | 'amber' | 'ink'
+  tone?: 'brand' | 'green' | 'amber' | 'ink' | 'red'
 }
 
 export default function Dashboard() {
   const [properties, setProperties] = useState<Property[]>([])
   const [tenants, setTenants] = useState<Tenant[]>([])
   const [payments, setPayments] = useState<Payment[]>([])
+  const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    Promise.all([listProperties(), listTenants(), listPayments()])
-      .then(([p, t, pay]) => {
+    Promise.all([listProperties(), listTenants(), listPayments(), listExpenses()])
+      .then(([p, t, pay, exp]) => {
         setProperties(p)
         setTenants(t)
         setPayments(pay)
+        setExpenses(exp)
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
@@ -43,15 +45,29 @@ export default function Dashboard() {
       (s, p) => s + Math.max(0, Number(p.amount_due) - Number(p.amount_paid)),
       0,
     )
+    const gastos = expenses
+      .filter((e) => e.period === period)
+      .reduce((s, e) => s + Number(e.amount), 0)
+    const beneficio = cobrado - gastos
     const activos = tenants.filter((t) => t.status === 'activo').length
     return [
       {
-        label: `Cobrado en ${formatPeriod(period)}`,
+        label: `Ingresos · ${formatPeriod(period)}`,
         value: formatMoney(cobrado),
         tone: 'green',
       },
       {
-        label: 'Pendiente de cobro este mes',
+        label: 'Gastos del mes',
+        value: formatMoney(gastos),
+        tone: 'red',
+      },
+      {
+        label: 'Beneficio (ingresos − gastos)',
+        value: formatMoney(beneficio),
+        tone: beneficio >= 0 ? 'green' : 'red',
+      },
+      {
+        label: 'Pendiente de cobro',
         value: formatMoney(pendiente),
         tone: 'amber',
       },
@@ -66,7 +82,7 @@ export default function Dashboard() {
         tone: 'ink',
       },
     ]
-  }, [payments, tenants, properties, period])
+  }, [payments, expenses, tenants, properties, period])
 
   const pendientes = useMemo(
     () =>
@@ -89,26 +105,13 @@ export default function Dashboard() {
       </div>
 
       {/* Tarjetas de estadísticas */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
         {stats.map((s) => (
           <Card key={s.label} className="p-4">
             <div className="text-xs font-medium uppercase tracking-wide text-gray-500">
               {s.label}
             </div>
-            <div
-              className={
-                'mt-2 text-2xl font-bold ' +
-                (s.tone === 'green'
-                  ? 'text-green-600'
-                  : s.tone === 'amber'
-                    ? 'text-amber-600'
-                    : s.tone === 'brand'
-                      ? 'text-brand-600'
-                      : 'text-ink-900')
-              }
-            >
-              {s.value}
-            </div>
+            <div className={'mt-2 text-2xl font-bold ' + toneClass(s.tone)}>{s.value}</div>
           </Card>
         ))}
       </div>
@@ -159,4 +162,19 @@ export default function Dashboard() {
       </Card>
     </div>
   )
+}
+
+function toneClass(tone: Stat['tone']): string {
+  switch (tone) {
+    case 'green':
+      return 'text-green-600'
+    case 'amber':
+      return 'text-amber-600'
+    case 'red':
+      return 'text-red-600'
+    case 'brand':
+      return 'text-brand-600'
+    default:
+      return 'text-ink-900'
+  }
 }

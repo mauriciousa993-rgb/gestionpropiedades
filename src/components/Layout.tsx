@@ -8,6 +8,7 @@ const nav = [
   { to: '/inquilinos', label: 'Inquilinos', icon: '👤' },
   { to: '/pagos', label: 'Pagos', icon: '💶' },
   { to: '/servicios', label: 'Servicios', icon: '🧾' },
+  { to: '/gastos', label: 'Gastos', icon: '📉' },
 ]
 
 export default function Layout() {
