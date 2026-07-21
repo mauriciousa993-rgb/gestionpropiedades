@@ -15,11 +15,12 @@ import {
   deleteProperty,
   deleteRoom,
   getProperty,
+  listPayments,
   listRooms,
   listTenants,
 } from '../data/api'
-import { formatMoney } from '../lib/format'
-import type { Property, Room, Tenant } from '../lib/types'
+import { currentPeriod, formatMoney, formatPeriod } from '../lib/format'
+import type { Payment, Property, Room, Tenant } from '../lib/types'
 
 export default function PropertyDetail() {
   const { id } = useParams<{ id: string }>()
@@ -27,6 +28,7 @@ export default function PropertyDetail() {
   const [property, setProperty] = useState<Property | null>(null)
   const [rooms, setRooms] = useState<Room[]>([])
   const [tenants, setTenants] = useState<Tenant[]>([])
+  const [payments, setPayments] = useState<Payment[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [roomModal, setRoomModal] = useState(false)
@@ -34,14 +36,16 @@ export default function PropertyDetail() {
   async function load() {
     if (!id) return
     try {
-      const [p, r, t] = await Promise.all([
+      const [p, r, t, pay] = await Promise.all([
         getProperty(id),
         listRooms(id),
         listTenants(),
+        listPayments(),
       ])
       setProperty(p)
       setRooms(r)
       setTenants(t)
+      setPayments(pay)
     } catch (e) {
       setError((e as Error).message)
     } finally {
@@ -86,6 +90,13 @@ export default function PropertyDetail() {
   const tenantFull = tenants.find(
     (t) => t.property_id === property.id && !t.room_id && t.status === 'activo',
   )
+
+  const period = currentPeriod()
+  // ¿Este inquilino tiene un pago marcado como "pagado" en el mes actual?
+  const haPagado = (tenantId: string) =>
+    payments.some(
+      (p) => p.tenant_id === tenantId && p.period === period && p.status === 'pagado',
+    )
 
   return (
     <div className="space-y-6">
@@ -143,12 +154,14 @@ export default function PropertyDetail() {
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
               {rooms.map((room) => {
-                const occupant = tenants.find(
+                const occupants = tenants.filter(
                   (t) => t.room_id === room.id && t.status === 'activo',
                 )
+                const paidCount = occupants.filter((o) => haPagado(o.id)).length
+                const estado = estadoHabitacion(occupants.length, paidCount)
                 return (
                   <Card key={room.id} className="p-4">
-                    <div className="flex items-start justify-between">
+                    <div className="flex items-start justify-between gap-2">
                       <div>
                         <div className="font-semibold text-ink-900">{room.name}</div>
                         <div className="mt-1 text-sm text-gray-500">
@@ -156,20 +169,41 @@ export default function PropertyDetail() {
                           {formatMoney(room.monthly_rent)}/mes
                         </div>
                       </div>
-                      <Badge tone={occupant ? 'green' : 'blue'}>
-                        {occupant ? 'Ocupada' : 'Libre'}
-                      </Badge>
+                      <Badge tone={estado.tone}>{estado.label}</Badge>
                     </div>
-                    <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3 text-sm">
-                      <span className="text-gray-600">
-                        {occupant ? `👤 ${occupant.full_name}` : 'Sin inquilino'}
-                      </span>
-                      <button
-                        onClick={() => onDeleteRoom(room)}
-                        className="text-xs text-red-600 hover:underline"
-                      >
-                        Eliminar
-                      </button>
+
+                    <div className="mt-3 border-t border-gray-100 pt-3">
+                      {occupants.length === 0 ? (
+                        <p className="text-sm text-gray-500">Sin inquilino</p>
+                      ) : (
+                        <div className="space-y-1.5">
+                          {occupants.map((o) => {
+                            const pagado = haPagado(o.id)
+                            return (
+                              <div
+                                key={o.id}
+                                className="flex items-center justify-between text-sm"
+                              >
+                                <span className="text-ink-800">👤 {o.full_name}</span>
+                                <Badge tone={pagado ? 'green' : 'gray'}>
+                                  {pagado ? '✓ Pagado' : 'Pendiente'}
+                                </Badge>
+                              </div>
+                            )
+                          })}
+                          <p className="pt-1 text-xs text-gray-400">
+                            {paidCount} de {occupants.length} han pagado · {formatPeriod(period)}
+                          </p>
+                        </div>
+                      )}
+                      <div className="mt-2 text-right">
+                        <button
+                          onClick={() => onDeleteRoom(room)}
+                          className="text-xs text-red-600 hover:underline"
+                        >
+                          Eliminar habitación
+                        </button>
+                      </div>
                     </div>
                   </Card>
                 )
@@ -216,6 +250,14 @@ export default function PropertyDetail() {
       />
     </div>
   )
+}
+
+// Estado de cobro de una habitación según cuántos de sus inquilinos han pagado.
+function estadoHabitacion(total: number, pagados: number) {
+  if (total === 0) return { label: 'Libre', tone: 'blue' as const }
+  if (pagados === total) return { label: 'Cobrada', tone: 'green' as const }
+  if (pagados > 0) return { label: `Parcial ${pagados}/${total}`, tone: 'amber' as const }
+  return { label: 'Pendiente', tone: 'red' as const }
 }
 
 function Info({ label, children }: { label: string; children: ReactNode }) {
